@@ -1,0 +1,69 @@
+#include <HX711_ADC.h>  // Incluye la biblioteca HX711_ADC
+
+#define DOUT  4  // Pin DT del HX711 conectado al pin digital 4 del Arduino
+#define CLK   5  // Pin SCK del HX711 conectado al pin digital 5 del Arduino
+
+HX711_ADC LoadCell(DOUT, CLK);  // Crea una instancia de la clase HX711_ADC
+
+float calibration_factor = 1.0;  // Factor de calibración inicial (ajusta este valor manualmente)
+bool pressed = false;  // Variable para verificar si la celda está siendo presionada
+
+void setup() {
+  Serial.begin(9600);  // Inicia la comunicación serial
+  delay(500);
+
+  LoadCell.begin();  // Inicia la comunicación con el HX711
+  
+  // Estabilización y tara
+  unsigned long stabilizingTime = 2000;  // Tiempo de estabilización en milisegundos
+  boolean _tare = true;  // Realiza la tara al iniciar
+  LoadCell.start(stabilizingTime, _tare);
+
+  if (LoadCell.getTareTimeoutFlag()) {
+    Serial.println("Error: Timeout de tara, verifica las conexiones y reinicia el Arduino.");
+  } else {
+    Serial.println("Tara completada.");
+  }
+
+  // Configuración del factor de calibración
+  LoadCell.setCalFactor(calibration_factor);  // Establece el factor de calibración
+  Serial.println("Calibración del sensor. Presiona o suelta la celda para observar cambios.");
+}
+
+void loop() {
+  // Actualiza los datos del HX711
+  LoadCell.update();
+
+  // Lee el valor actual de la celda de carga
+  float fuerza_aplicada = LoadCell.getData();
+
+  // Muestra la fuerza aplicada en la consola cada 2 segundos (2000 ms)
+  static unsigned long previousMillis = 0;
+  const unsigned long printInterval = 2000;  // Intervalo de impresión en milisegundos (2 segundos)
+
+  if (millis() - previousMillis >= printInterval) {
+    previousMillis = millis();  // Actualiza el tiempo
+
+    // Si la fuerza aplicada es mayor a 0, se asume que se está presionando
+    if (fuerza_aplicada > 0.5) {
+      pressed = true;
+      Serial.print("Fuerza aplicada: ");
+      Serial.print(fuerza_aplicada, 2);  // Muestra 2 decimales
+      Serial.println(" Kg");
+    } else if (fuerza_aplicada == 0) {
+      pressed = false;
+      Serial.println("Presione la celda de carga.");
+    }
+  }
+
+  // Actualiza rápidamente cuando se presiona
+  if (pressed) {
+    float nueva_fuerza = LoadCell.getData();
+    if (nueva_fuerza > 0.5) {
+      Serial.print("Fuerza rápida: ");
+      Serial.print(nueva_fuerza, 2);  // Muestra 2 decimales
+      Serial.println(" Kg");
+      delay(200);  // Espera más corta (200 ms) cuando se está presionando
+    }
+  }
+}
