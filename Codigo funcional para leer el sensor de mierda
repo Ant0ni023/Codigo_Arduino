@@ -5,7 +5,8 @@
 
 HX711_ADC LoadCell(DOUT, CLK);  // Crea una instancia de la clase HX711_ADC
 
-float calibration_factor = 1.0;  // Factor de calibración inicial (ajusta este valor manualmente)
+float calibration_factor = -7050.0;  // Ajusta este valor para calibrar la celda de carga
+float max_capacidad = 50.0;  // Capacidad máxima de la celda de carga (50 kg)
 bool pressed = false;  // Variable para verificar si la celda está siendo presionada
 
 void setup() {
@@ -37,6 +38,13 @@ void loop() {
   // Lee el valor actual de la celda de carga
   float fuerza_aplicada = LoadCell.getData();
 
+  // Limitar el valor entre 0 kg y la capacidad máxima (50 kg)
+  if (fuerza_aplicada < 0) {
+    fuerza_aplicada = 0;
+  } else if (fuerza_aplicada > max_capacidad) {
+    fuerza_aplicada = max_capacidad;
+  }
+
   // Muestra la fuerza aplicada en la consola cada 2 segundos (2000 ms)
   static unsigned long previousMillis = 0;
   const unsigned long printInterval = 2000;  // Intervalo de impresión en milisegundos (2 segundos)
@@ -45,7 +53,7 @@ void loop() {
     previousMillis = millis();  // Actualiza el tiempo
 
     // Si la fuerza aplicada es mayor a 0, se asume que se está presionando
-    if (fuerza_aplicada > 0.5) {
+    if (fuerza_aplicada > 0) {
       pressed = true;
       Serial.print("Fuerza aplicada: ");
       Serial.print(fuerza_aplicada, 2);  // Muestra 2 decimales
@@ -59,8 +67,15 @@ void loop() {
   // Actualiza rápidamente cuando se presiona
   if (pressed) {
     float nueva_fuerza = LoadCell.getData();
-    if (nueva_fuerza > 0.5) {
-      Serial.print("Fuerza rápida: ");
+    // Limitar de nuevo entre 0 y 50 kg
+    if (nueva_fuerza < 0) {
+      nueva_fuerza = 0;
+    } else if (nueva_fuerza > max_capacidad) {
+      nueva_fuerza = max_capacidad;
+    }
+
+    if (nueva_fuerza > 0) {
+      Serial.print("Fuerza aplicada: ");
       Serial.print(nueva_fuerza, 2);  // Muestra 2 decimales
       Serial.println(" Kg");
       delay(200);  // Espera más corta (200 ms) cuando se está presionando
